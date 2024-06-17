@@ -51,7 +51,9 @@ display(spark.read.format("delta").load(DA.paths.sales).limit(10))
 # TODO
 df = (spark.readStream
       .format("delta")
+      .option("maxFilesPerTrigger", 1)
       .load(DA.paths.sales)
+
 )
 
 # COMMAND ----------
@@ -85,8 +87,8 @@ coupon_sales_df = (df
                     .filter(col("items.coupon").isNotNull())
                    )
 
-coupon_sales_df.isStreaming
-# display(coupon_sales_df.limit(100))
+#coupon_sales_df.isStreaming
+display(coupon_sales_df.limit(100))
 
 # COMMAND ----------
 
@@ -112,6 +114,23 @@ DA.validate_2_1(coupon_sales_df.schema)
 # MAGIC - Set the output path to **`coupons_output_path`**
 # MAGIC
 # MAGIC Start the streaming query and assign the resulting handle to **`coupon_sales_query`**.
+
+# COMMAND ----------
+
+coupons_checkpoint_path = f"{DA.paths.checkpoints}/coupon-sales"
+coupons_output_path = f"{DA.paths.working_dir}/coupon-sales/output"
+
+coupon_sales_query = (coupon_sales_df
+                      .writeStream
+                      .format("delta")
+                      .option("mode", "append")
+                      .queryName("coupon_sales")
+                      .trigger(processingTime="1 second")
+                      .option("checkpointLocation", coupons_checkpoint_path)
+                      .start(coupons_output_path)
+                      )
+
+DA.block_until_stream_is_ready(coupon_sales_query)
 
 # COMMAND ----------
 
@@ -149,6 +168,21 @@ DA.validate_3_1(coupon_sales_query)
 # MAGIC ### 4. Monitor streaming query
 # MAGIC - Get the ID of streaming query and store it in **`queryID`**
 # MAGIC - Get the status of streaming query and store it in **`queryStatus`**
+
+# COMMAND ----------
+
+query_id = coupon_sales_query.id
+print(query_id)
+
+# COMMAND ----------
+
+query_status = coupon_sales_query.status
+
+query_status
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
@@ -203,6 +237,20 @@ DA.validate_5_1(coupon_sales_query)
 # DBTITLE 0,--i18n-df733595-d0de-4db2-a661-58e2cf53ac44
 # MAGIC %md
 # MAGIC ### 6. Verify the records were written in Delta format
+
+# COMMAND ----------
+
+
+
+df_test = dbutils.fs.ls(f"{DA.paths.working_dir}/coupon-sales/output")
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 

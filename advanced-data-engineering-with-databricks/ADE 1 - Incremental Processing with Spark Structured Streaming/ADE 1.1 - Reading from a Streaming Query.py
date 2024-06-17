@@ -41,10 +41,11 @@ df = (spark
       .readStream
       .format("delta")
       .load(DA.paths.events)
+     
 )
 
 print("Is the dataframe streaming:", df.isStreaming)
-c
+
 
 # COMMAND ----------
 
